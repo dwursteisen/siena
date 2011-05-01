@@ -20,10 +20,7 @@ import java.lang.reflect.Field;
 import java.security.MessageDigest;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Collection;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.TimeZone;
+import java.util.*;
 
 import siena.embed.Embedded;
 import siena.embed.JsonSerializer;
@@ -228,7 +225,27 @@ public class Util {
 		}
 		return value;
 	}
-	
+
+
+    public static <T> Field[] getFields(Class<T> clazz) {
+        Field[] fieldsFromClass = clazz.getDeclaredFields();
+        Field[] fieldsByInheritance = clazz.getFields();
+
+        Set<Field> fields = new HashSet(Arrays.asList(fieldsFromClass));
+        fields.addAll(Arrays.asList(fieldsByInheritance));
+
+        return fields.toArray(new Field[fields.size()]);
+    }
+
+    public static <T> Field getField(Class<T> clazz, String fieldName) throws NoSuchFieldException {
+        try {
+            return clazz.getDeclaredField(fieldName); // search for public/private/default fields
+        } catch(NoSuchFieldException ex) {
+            return clazz.getField(fieldName); // search inherited field
+        }
+    }
+
+
 	public static void setField(Object object, Field f, Object value) {
 		boolean wasAccess = true;
 		if(!f.isAccessible()){
@@ -323,4 +340,6 @@ public class Util {
 			Util.setField(objTo, field, Util.readField(objFrom, field));
 		}
 	}
+
+
 }

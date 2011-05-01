@@ -128,7 +128,7 @@ public abstract class Model {
 	private void init() {
 		// initialize Query<T> types
 		Class<?> clazz = getClass();
-		Field[] fields = clazz.getDeclaredFields();
+		Field[] fields = Util.getFields(clazz);
 		for (Field field : fields) {
 			if(field.getType() != Query.class) { continue; }
 

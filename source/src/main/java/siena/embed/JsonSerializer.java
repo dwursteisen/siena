@@ -88,7 +88,7 @@ public class JsonSerializer {
 	}
 	
 	private static Json serializeMap(Object obj) throws Exception {
-		Field[] fields = obj.getClass().getDeclaredFields();
+		Field[] fields = Util.getFields(obj.getClass());
 		Json result = map();
 		for (Field f : fields) {
 			if(mustIgnore(f)) continue;
@@ -105,7 +105,7 @@ public class JsonSerializer {
 		// serializes super classes
 		Class<?> clazz = obj.getClass().getSuperclass();
 		while(clazz!=null){
-			fields = clazz.getDeclaredFields();
+			fields = Util.getFields(clazz);
 			for (Field f : fields) {
 				if(mustIgnore(f)) continue;
 				
@@ -123,7 +123,7 @@ public class JsonSerializer {
 	}
 	
 	private static Json serializeList(Object obj) throws Exception {
-		Field[] fields = obj.getClass().getDeclaredFields();
+        Field[] fields = Util.getFields(obj.getClass());
 		Json result = list();
 		for (Field f : fields) {
 			if(mustIgnore(f)) continue;
@@ -137,7 +137,7 @@ public class JsonSerializer {
 		// serializes super classes
 		Class<?> clazz = obj.getClass().getSuperclass();
 		while(clazz!=null){
-			fields = clazz.getDeclaredFields();
+			fields = Util.getFields(clazz);
 			for (Field f : fields) {
 				if(mustIgnore(f)) continue;
 				
@@ -170,7 +170,7 @@ public class JsonSerializer {
 							+". A Json map is needed but found: "+data);
 				}
 				Object obj = Util.createObjectInstance(clazz);
-				Field[] fields = clazz.getDeclaredFields();
+				Field[] fields = Util.getFields(clazz);
 				for (Field f : fields) {
 					if(mustIgnore(f)) continue;
 					
@@ -184,7 +184,7 @@ public class JsonSerializer {
 				// deserializes super classes
 				Class<?> superclazz = obj.getClass().getSuperclass();
 				while(superclazz!=null){
-					fields = superclazz.getDeclaredFields();
+					fields = Util.getFields(superclazz);
 					for (Field f : fields) {
 						if(mustIgnore(f)) continue;
 						
@@ -206,7 +206,7 @@ public class JsonSerializer {
 							+". A Json list is needed but found: "+data);
 				}
 				Object obj = Util.createObjectInstance(clazz);
-				Field[] fields = clazz.getDeclaredFields();
+				Field[] fields = Util.getFields(clazz);
 				for (Field f : fields) {
 					if(mustIgnore(f)) continue;
 					
@@ -219,7 +219,7 @@ public class JsonSerializer {
 				// deserializes super classes
 				Class<?> superclazz = obj.getClass().getSuperclass();
 				while(superclazz!=null){
-					fields = superclazz.getDeclaredFields();
+					fields = Util.getFields(superclazz);
 					for (Field f : fields) {
 						if(mustIgnore(f)) continue;
 						

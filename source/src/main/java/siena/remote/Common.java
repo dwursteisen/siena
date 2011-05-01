@@ -31,7 +31,7 @@ public class Common {
 		Class<?> clazz = obj.getClass();
 		element.addAttribute("class", clazz.getName());
 		
-		Field[] fields = clazz.getDeclaredFields();
+		Field[] fields = Util.getFields(clazz);
 		for (Field field : fields) {
 			if(field.getType() == Class.class) continue;
 			if(ids && !ClassInfo.isId(field)) continue;
@@ -81,7 +81,7 @@ public class Common {
 			List<Element> list = element.elements();
 			for (Element el : list) {
 				String name = el.attributeValue("name");
-				field = clazz.getDeclaredField(name);
+				field = Util.getField(clazz, name);
 				field.setAccessible(true);
 				
 				if(el.hasContent()) {

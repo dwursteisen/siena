@@ -10,16 +10,7 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import siena.ClassInfo;
-import siena.Id;
-import siena.QueryData;
-import siena.QueryFilter;
-import siena.QueryFilterSearch;
-import siena.QueryFilterSimple;
-import siena.QueryJoin;
-import siena.QueryOrder;
-import siena.SienaException;
-import siena.SienaRestrictedApiException;
+import siena.*;
 import siena.core.options.QueryOptionOffset;
 import siena.core.options.QueryOptionPage;
 import siena.core.options.QueryOptionState;
@@ -152,7 +143,7 @@ public class GaeQueryUtils {
 				if(qf.fields.length>1)
 					throw new SienaException("Search not possible for several fields in GAE: only one field");
 				try {
-					Field field = clazz.getDeclaredField(qf.fields[0]);
+					Field field = Util.getField(clazz, qf.fields[0]);
 					if(field.isAnnotationPresent(Unindexed.class)){
 						throw new SienaException("Cannot search the @Unindexed field "+field.getName());
 					}
