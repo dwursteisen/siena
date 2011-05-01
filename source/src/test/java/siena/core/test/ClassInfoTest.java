@@ -5,6 +5,8 @@ import java.util.List;
 
 import junit.framework.TestCase;
 import siena.ClassInfo;
+import siena.base.test.model.Inheritance;
+import siena.base.test.model.SampleModel;
 import siena.base.test.model.SampleModelMultipleKeys;
 
 public class ClassInfoTest extends TestCase {
@@ -54,5 +56,14 @@ public class ClassInfoTest extends TestCase {
 		
 		assertEquals("SampleModelMultipleKeys", info.tableName);
 	}
+
+
+    public void testClassInfo_WithInheritance() throws NoSuchFieldException {
+        ClassInfo info = ClassInfo.getClassInfo(Inheritance.class);
+        assertTrue(info.allFields.contains(Inheritance.class.getDeclaredField("myFieldFromInheritanceClass")));
+        assertTrue(info.allFields.contains(Inheritance.class.getDeclaredField("myPrivateFieldFromInheritanceClass")));
+        assertTrue(info.allFields.contains(SampleModel.class.getDeclaredField("publicField")));
+
+    }
 
 }

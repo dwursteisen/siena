@@ -15,11 +15,13 @@
  */
 package siena.core.test;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 
 import junit.framework.TestCase;
 import siena.Util;
+import siena.base.test.model.Inheritance;
 
 public class TestUtil extends TestCase {
 	
@@ -34,5 +36,19 @@ public class TestUtil extends TestCase {
 		assertEquals("5de5f7ed4762f3e6555f479d98a75696170c1eb1", Util.sha1("siena"));
 		assertEquals("622758a4191a450e0d94ad07b6d9d8ef67ffc485", Util.sha1("ma\u00f1o"));
 	}
+
+    public void testGetField() throws NoSuchFieldException {
+        Field f = Util.getField(Inheritance.class, "myFieldFromInheritanceClass");
+        assertNotNull(f);
+
+        f = Util.getField(Inheritance.class, "myPrivateFieldFromInheritanceClass");
+        assertNotNull(f);
+
+
+        f = Util.getField(Inheritance.class, "publicField");
+        assertNotNull(f);
+
+
+    }
 
 }

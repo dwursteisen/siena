@@ -17,10 +17,7 @@ package siena;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class ClassInfo {
@@ -42,7 +39,7 @@ public class ClassInfo {
 		this.clazz = clazz;
 		tableName = getTableName(clazz);
 
-		Field[] fields = clazz.getDeclaredFields();	
+        Field[] fields = Util.getFields(clazz);
 
 		for (Field field : fields) {
 			
