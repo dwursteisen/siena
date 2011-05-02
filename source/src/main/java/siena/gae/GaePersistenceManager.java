@@ -47,6 +47,8 @@ import com.google.appengine.api.datastore.PreparedQuery;
 import com.google.appengine.api.datastore.QueryResultIterable;
 import com.google.appengine.api.datastore.QueryResultList;
 import com.google.appengine.api.datastore.Transaction;
+import siena.hook.GetHook;
+import siena.hook.Hook;
 
 public class GaePersistenceManager extends AbstractPersistenceManager {
 
@@ -99,7 +101,9 @@ public class GaePersistenceManager extends AbstractPersistenceManager {
 		Key key = GaeMappingUtils.getKey(obj);
 		try {
 			Entity entity = ds.get(key);
+            new GetHook().doBefore(obj);
 			GaeMappingUtils.fillModel(obj, entity);
+            new GetHook().doAfter(obj);
 		} catch (Exception e) {
 			throw new SienaException(e);
 		}
@@ -1337,7 +1341,10 @@ public class GaePersistenceManager extends AbstractPersistenceManager {
 		Map<Key, Entity> entityMap = ds.get(keys);
 		
 		for(Object obj:objects){
+
+            new GetHook().doBefore(obj);
 			GaeMappingUtils.fillModel(obj, entityMap.get(GaeMappingUtils.getKey(obj)));
+            new GetHook().doAfter(obj);
 		}
 		
 		return entityMap.size();

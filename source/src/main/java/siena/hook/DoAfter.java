@@ -1,12 +1,12 @@
-package siena.base.test.model;
+package siena.hook;
 
-
-import siena.hook.DoAfter;
-import siena.hook.DoBefore;
-import siena.hook.Hook;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 /*
-* Copyright 2008-2010 David Wursteisen <david.wursteisen+siena@gmail.com>
+* Copyright 2011 David Wursteisen <david.wursteisen+siena@gmail.com>
 *
 *   Licensed under the Apache License, Version 2.0 (the "License");
 *   you may not use this file except in compliance with the License.
@@ -20,19 +20,9 @@ import siena.hook.Hook;
 *   See the License for the specific language governing permissions and
 *   limitations under the License.
 */
-public class Inheritance extends SampleModel {
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+public @interface DoAfter {
 
-    public String myFieldFromInheritanceClass;
-
-    private String myPrivateFieldFromInheritanceClass;
-
-
-    public String onAfterField = null;
-
-
-
-    @DoAfter(on = Hook.GET)
-    public void updateOnBeforeField() {
-        onAfterField = "ON BEFORE FIELD";
-    }
+    Hook[] on();
 }
