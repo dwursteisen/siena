@@ -1,44 +1,81 @@
 package siena.base.test;
 
-import java.util.Arrays;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.util.List;
+import java.util.Properties;
+
+import org.apache.commons.dbcp.BasicDataSource;
+import org.apache.ddlutils.Platform;
+import org.apache.ddlutils.PlatformFactory;
+import org.apache.ddlutils.model.Database;
 
 import siena.PersistenceManager;
 import siena.Query;
-import siena.SienaException;
-import siena.SienaRestrictedApiException;
-import siena.base.test.model.*;
-import siena.gae.GaePersistenceManager;
-import siena.gae.QueryOptionGaeContext;
+import siena.base.test.model.Discovery4Search;
+import siena.jdbc.JdbcPersistenceManager;
+import siena.jdbc.ddl.DdlGenerator;
 
-import com.google.appengine.tools.development.testing.LocalDatastoreServiceTestConfig;
-import com.google.appengine.tools.development.testing.LocalServiceTestHelper;
-
-public class GaeTest extends BaseTest {
-	private final LocalServiceTestHelper helper =
-        new LocalServiceTestHelper(new LocalDatastoreServiceTestConfig());
-
-	private static GaePersistenceManager pm;
+public class DrizzleTest extends BaseTest {
+	private static JdbcPersistenceManager pm;
 	
 	@Override
-	public PersistenceManager createPersistenceManager(List<Class<?>> classes)
-			throws Exception {
-		if(pm==null){
-			pm = new GaePersistenceManager();
-			//PersistenceManagerFactory.install(pm, Discovery4GeneratorNone.class);
-			pm.init(null);
+	public PersistenceManager createPersistenceManager(List<Class<?>> classes) throws Exception {
+		if(pm == null){
+			Properties p = new Properties();
+			
+			String driver   = "org.drizzle.jdbc.DrizzleDriver";
+			//String username = "root";
+			//String password = "";
+			String url      = "jdbc:mysql://localhost:4427/siena";
+			
+			p.setProperty("driver",   driver);
+			//p.setProperty("user",     username);
+			//p.setProperty("password", password);
+			p.setProperty("url",      url);
+	
+			Class.forName(driver);
+			BasicDataSource dataSource = new BasicDataSource();
+			dataSource = new BasicDataSource();
+			dataSource.setUrl(url);
+			//dataSource.setUsername(username);
+			//dataSource.setPassword(password);
+			dataSource.setMaxWait(2000); // 2 seconds max for wait a connection.
+			
+			DdlGenerator generator = new DdlGenerator();
+			for (Class<?> clazz : classes) {
+				generator.addTable(clazz);
+			}
+	
+			// get the Database model
+			Database database = generator.getDatabase();
+	
+			Platform platform = PlatformFactory.createNewPlatformInstance(dataSource);
+			Class.forName("org.drizzle.jdbc.DrizzleDriver");
+			Connection connection = DriverManager.getConnection(url);
+			
+			System.out.println(platform.getAlterTablesSql(connection, database));
+			
+			// this will perform the database changes
+			platform.alterTables(connection, database, true);
+	
+			connection.close();
+			
+			pm = new JdbcPersistenceManager();
+			pm.init(p);
 		}
+		
 		return pm;
 	}
-
+	
 	@Override
 	public boolean supportsAutoincrement() {
-		return false;
+		return true;
 	}
-
+	
 	@Override
 	public boolean supportsMultipleKeys() {
-		return false;
+		return true;
 	}
 	
 	@Override
@@ -46,343 +83,49 @@ public class GaeTest extends BaseTest {
 		return false;
 	}
 
-    @Override
-    public void setUp() throws Exception {
-    	helper.setUp();
-        super.setUp();
-    }
-
-    @Override
-    public void tearDown() throws Exception {
-        super.tearDown();
-        helper.tearDown();
-    }
-    
-// SPECIAL OVERRIDE    
-	@Override
-	public void testJoinSortFields() {
-		try {
-			super.testJoinSortFields();
-		}catch(SienaRestrictedApiException ex){
-			return;
-		}
-		
-		fail();
-	}
-
-
-    public void testDoBeforeOnGet() {
-        Inheritance obj = new Inheritance();
-        pm.insert(obj);
-
-        assertNull(obj.onAfterField);
-
-
-        pm.get(obj);
-
-        assertNotNull(obj.onAfterField);
-    }
-	
-	public void testFilterWithOperatorINStateful() {
-		List<PersonUUID> l = getOrderedPersonUUIDs();
-		Query<PersonUUID> query = 
-			pm.createQuery(PersonUUID.class)
-			.filter("id IN", Arrays.asList( l.get(0).id, l.get(1).id))
-			.stateful()
-			.paginate(1);
-
-		List<PersonUUID> people = query.fetch();
-		QueryOptionGaeContext gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(people);
-		assertEquals(1, people.size());
-		assertEquals(l.get(0), people.get(0));
-		
-		people = query.nextPage().fetch();
-		gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);
-		assertNotNull(people);
-		assertEquals(1, people.size());
-		assertEquals(l.get(1), people.get(0));
-	}
-	
-	public void testFilterWithOperatorINLotsOfEntitiesStateful() {
-		Discovery[] discs = new Discovery[200];
-		for(int i=0; i<200; i++){
-			discs[i] = new Discovery("Disc_"+i, LongAutoID_CURIE);
-		}
-		pm.insert((Object[])discs);
-		
-		Query<Discovery> query = 
-			pm.createQuery(Discovery.class)
-			.filter("id IN", Arrays.asList( discs[48].id, discs[73].id, discs[86].id));
-		List<Discovery> people = query.fetch();
-
-		QueryOptionGaeContext gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(people);
-		assertEquals(3, people.size());
-		assertEquals(discs[48], people.get(0));
-		assertEquals(discs[73], people.get(1));
-		assertEquals(discs[86], people.get(2));
-	}
-	
-	public void testFilterWithOperatorINLotsOfEntitiesPaginateStateless() {
-		Discovery[] discs = new Discovery[200];
-		for(int i=0; i<200; i++){
-			discs[i] = new Discovery("Disc_"+i, LongAutoID_CURIE);
-		}
-		pm.insert((Object[])discs);
-		
-		Query<Discovery> query = 
-			pm.createQuery(Discovery.class)
-			.filter("id IN", Arrays.asList( discs[48].id, discs[73].id, discs[86].id))
-			.paginate(2);
-		List<Discovery> people = query.fetch();
-
-		QueryOptionGaeContext gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(people);
-		assertEquals(2, people.size());
-		assertEquals(discs[48], people.get(0));
-		assertEquals(discs[73], people.get(1));
-		
-		people = query.nextPage().fetch();
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(people);
-		assertEquals(1, people.size());
-		assertEquals(discs[86], people.get(0));
-		
-		people = query.nextPage().fetch();
-		assertNotNull(people);
-		assertEquals(0, people.size());
-		
-		people = query.previousPage().fetch();
-		assertNotNull(people);
-		assertEquals(1, people.size());
-		assertEquals(discs[86], people.get(0));
-		
-		people = query.previousPage().fetch();
-		assertNotNull(people);
-		assertEquals(2, people.size());
-		assertEquals(discs[48], people.get(0));
-		assertEquals(discs[73], people.get(1));
-		
-		people = query.previousPage().fetch();
-		assertNotNull(people);
-		assertEquals(0, people.size());
-	}
-	
-	public void testFilterWithOperatorINLotsOfEntitiesPaginateStateful() {
-		Discovery[] discs = new Discovery[200];
-		for(int i=0; i<200; i++){
-			discs[i] = new Discovery("Disc_"+i, LongAutoID_CURIE);
-		}
-		pm.insert((Object[])discs);
-		
-		Query<Discovery> query = 
-			pm.createQuery(Discovery.class)
-			.filter("id IN", Arrays.asList( discs[48].id, discs[73].id, discs[86].id))
-			.stateful()
-			.paginate(2);
-		List<Discovery> people = query.fetch();
-
-		QueryOptionGaeContext gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(people);
-		assertEquals(2, people.size());
-		assertEquals(discs[48], people.get(0));
-		assertEquals(discs[73], people.get(1));
-		
-		people = query.nextPage().fetch();
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(people);
-		assertEquals(1, people.size());
-		assertEquals(discs[86], people.get(0));
-		
-		people = query.nextPage().fetch();
-		assertNotNull(people);
-		assertEquals(0, people.size());
-		
-		people = query.previousPage().fetch();
-		assertNotNull(people);
-		assertEquals(1, people.size());
-		assertEquals(discs[86], people.get(0));
-		
-		people = query.previousPage().fetch();
-		assertNotNull(people);
-		assertEquals(2, people.size());
-		assertEquals(discs[48], people.get(0));
-		assertEquals(discs[73], people.get(1));
-		
-		people = query.previousPage().fetch();
-		assertNotNull(people);
-		assertEquals(0, people.size());
-	}
-	
-	public void testFilterWithOperatorNotEqualStateful() {
-		List<PersonUUID> l = getOrderedPersonUUIDs();
-		Query<PersonUUID> query = 
-			pm.createQuery(PersonUUID.class)
-			.filter("id!=", l.get(0).id)
-			.order("id")
-			.stateful()
-			.paginate(1);
-		
-		List<PersonUUID> people = query.fetch();
-
-		QueryOptionGaeContext gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(people);
-		assertEquals(1, people.size());
-		assertEquals(l.get(1), people.get(0));
-		
-		people = query.nextPage().fetch();
-
-		gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);
-		assertNotNull(people);
-		assertEquals(1, people.size());
-		assertEquals(l.get(2), people.get(0));
-	}
-	
-	
-	public void testFilterWithOperatorNotEqualLotsOfEntitiesStateful() {
-		Discovery[] discs = new Discovery[200];
-		for(int i=0; i<200; i++){
-			discs[i] = new Discovery("Disc_"+i, LongAutoID_CURIE);
-		}
-		pm.insert((Object[])discs);
-		
-		Query<Discovery> query = 
-			pm.createQuery(Discovery.class)
-			.stateful()
-			.filter("id !=", discs[48].id);
-		List<Discovery> res = query.fetch();
-
-		QueryOptionGaeContext gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(res);
-		assertEquals(200-1, res.size());
-		for(Discovery disc:res){
-			assertFalse(discs[48].equals(disc));
-		}
-	}
-	
-	public void testFilterWithOperatorNotEqualLotsOfEntitiesStateless() {
-		Discovery[] discs = new Discovery[200];
-		for(int i=0; i<200; i++){
-			discs[i] = new Discovery("Disc_"+i, LongAutoID_CURIE);
-		}
-		pm.insert((Object[])discs);
-		
-		Query<Discovery> query = 
-			pm.createQuery(Discovery.class)
-			.filter("id !=", discs[48].id);
-		List<Discovery> res = query.fetch();
-
-		QueryOptionGaeContext gaeCtx = (QueryOptionGaeContext)query.option(QueryOptionGaeContext.ID);
-		assertFalse(gaeCtx.useCursor);		
-		assertNotNull(res);
-		assertEquals(200-1, res.size());
-		for(Discovery disc:res){
-			assertFalse(discs[48].equals(disc));
-		}
-	}
-	
-	public void testSearchSingleFieldEqualsSingleResult() {
+	// SPECIFIC JDBC TESTS
+	public void testSearchMultipleSingleField() {
 		Discovery4Search[] discs = new Discovery4Search[10];
 		for(int i=0; i<10; i++){
 			if(i%2==0) discs[i] = new Discovery4Search("even_"+i, LongAutoID_CURIE);
 			else discs[i] = new Discovery4Search("odd_"+i, LongAutoID_CURIE);
+			pm.insert(discs[i]);
 		}
-		pm.insert((Object[])discs);
 		
 		Query<Discovery4Search> query = 
-			pm.createQuery(Discovery4Search.class).search("even_4", "name").order("name");
+			pm.createQuery(Discovery4Search.class).search("even_*", "name").order("name");
 		
 		List<Discovery4Search> res = query.fetch();
-
-		assertEquals(1, res.size());
-		assertEquals(discs[4], res.get(0));
+		
+		assertEquals(5, res.size());
+		for(int i=0; i<res.size();i++){
+			assertEquals(discs[2*i], res.get(i));
+		}		
 	}
 
-	public void testSearchSingleFieldEqualsSeveralResults() {
-		Discovery4Search[] discs = new Discovery4Search[5];
-		discs[0] = new Discovery4Search("alpha", LongAutoID_CURIE);
-		discs[1] = new Discovery4Search("beta", LongAutoID_CURIE);
-		discs[2] = new Discovery4Search("gamma", LongAutoID_CURIE);
-		discs[3] = new Discovery4Search("delta", LongAutoID_CURIE);
-		discs[4] = new Discovery4Search("eta", LongAutoID_CURIE);
-		pm.insert((Object[])discs);		
-		
+	public void testSearchMultipleWordsSingleField() {
+		Discovery4Search AB = new Discovery4Search("alpha beta", LongAutoID_CURIE);
+		Discovery4Search GB = new Discovery4Search("gamma beta", LongAutoID_CURIE);
+		Discovery4Search GD = new Discovery4Search("gamma delta", LongAutoID_CURIE);
+		Discovery4Search ET = new Discovery4Search("epsilon theta", LongAutoID_CURIE);
+		pm.insert(AB);
+		pm.insert(GB);
+		pm.insert(GD);
+		pm.insert(ET);
+
 		Query<Discovery4Search> query = 
-			pm.createQuery(Discovery4Search.class).search("beta eta", "name");
+			pm.createQuery(Discovery4Search.class).search("alpha delta", "name").order("name");
 		
 		List<Discovery4Search> res = query.fetch();
-
+		
 		assertEquals(2, res.size());
-		assertEquals(discs[1], res.get(0));
-		assertEquals(discs[4], res.get(1));
+		assertEquals(AB, res.get(0));
+		assertEquals(GD, res.get(1));
 	}
-	
-	public void testSearchSingleFieldBeginSingleResults() {
-		Discovery4Search[] discs = new Discovery4Search[5];
-		discs[0] = new Discovery4Search("alpha", LongAutoID_CURIE);
-		discs[1] = new Discovery4Search("beta", LongAutoID_CURIE);
-		discs[2] = new Discovery4Search("gamma", LongAutoID_CURIE);
-		discs[3] = new Discovery4Search("delta", LongAutoID_CURIE);
-		discs[4] = new Discovery4Search("eta", LongAutoID_CURIE);
-		pm.insert((Object[])discs);		
-		
-		Query<Discovery4Search> query = 
-			pm.createQuery(Discovery4Search.class).search("gamma*", "name");
-		
-		List<Discovery4Search>res = query.fetch();
 
-		assertEquals(1, res.size());
-		assertEquals(discs[2], res.get(0));
-	}
 	
-	public void testSearchSingleFieldBeginSeveralResults() {
-		Discovery4Search[] discs = new Discovery4Search[5];
-		discs[0] = new Discovery4Search("alpha", LongAutoID_CURIE);
-		discs[1] = new Discovery4Search("beta", LongAutoID_CURIE);
-		discs[2] = new Discovery4Search("alphagamma", LongAutoID_CURIE);
-		discs[3] = new Discovery4Search("delta", LongAutoID_CURIE);
-		discs[4] = new Discovery4Search("eta", LongAutoID_CURIE);
-		pm.insert((Object[])discs);		
-		
-		Query<Discovery4Search> query = 
-			pm.createQuery(Discovery4Search.class).search("alpha*", "name");
-		
-		List<Discovery4Search> res = query.fetch();
-
-		assertEquals(2, res.size());
-		assertEquals(discs[0], res.get(0));
-		assertEquals(discs[2], res.get(1));
-	}
 	
-	public void testSearchSingleFieldEndException() {
-		Discovery4Search[] discs = new Discovery4Search[5];
-		discs[0] = new Discovery4Search("alpha", LongAutoID_CURIE);
-		discs[1] = new Discovery4Search("beta", LongAutoID_CURIE);
-		discs[2] = new Discovery4Search("alphagamma", LongAutoID_CURIE);
-		discs[3] = new Discovery4Search("delta", LongAutoID_CURIE);
-		discs[4] = new Discovery4Search("eta", LongAutoID_CURIE);
-		pm.insert((Object[])discs);			
-		try {
-			Query<Discovery4Search> query = 
-				pm.createQuery(Discovery4Search.class).search("*gamma", "name");
-			query.fetch();
-		}catch(SienaException ex ){
-			return;
-		}
-		fail();
-	}
-	
-
-	// GENERIC TESTS OVERRIDE
+	// GENERIC TESTS
 	@Override
 	public void testCount() {
 		// TODO Auto-generated method stub
@@ -781,20 +524,13 @@ public class GaeTest extends BaseTest {
 	}
 
 	@Override
-	public void testSearchSingle() {
-		// TODO Auto-generated method stub
-		super.testSearchSingle();
-	}
-
-
-	@Override
 	public void testFetchLimitOffset() {
 		// TODO Auto-generated method stub
 		super.testFetchLimitOffset();
 	}
 
 	@Override
-	@Deprecated
+	@Deprecated	
 	public void testCountLimitOffset() {
 		// TODO Auto-generated method stub
 		super.testCountLimitOffset();
@@ -1035,6 +771,12 @@ public class GaeTest extends BaseTest {
 	}
 
 	@Override
+	public void testJoinSortFields() {
+		// TODO Auto-generated method stub
+		super.testJoinSortFields();
+	}
+
+	@Override
 	public void testJoinAnnotation() {
 		// TODO Auto-generated method stub
 		super.testJoinAnnotation();
@@ -1263,6 +1005,12 @@ public class GaeTest extends BaseTest {
 	}
 
 	@Override
+	public void testSearchSingle() {
+		// TODO Auto-generated method stub
+		super.testSearchSingle();
+	}
+
+	@Override
 	public void testBatchInsert() {
 		// TODO Auto-generated method stub
 		super.testBatchInsert();
@@ -1313,7 +1061,7 @@ public class GaeTest extends BaseTest {
 	@Override
 	public void testBatchGetByKeys() {
 		// TODO Auto-generated method stub
-		super.testBatchGetByKeysList();
+		super.testBatchGetByKeys();
 	}
 
 	@Override
@@ -1323,15 +1071,15 @@ public class GaeTest extends BaseTest {
 	}
 
 	@Override
-	public void testLimitStateless() {
-		// TODO Auto-generated method stub
-		super.testLimitStateless();
-	}
-
-	@Override
 	public void testLimitStateful() {
 		// TODO Auto-generated method stub
 		super.testLimitStateful();
+	}
+
+	@Override
+	public void testLimitStateless() {
+		// TODO Auto-generated method stub
+		super.testLimitStateless();
 	}
 
 	@Override
@@ -1545,6 +1293,18 @@ public class GaeTest extends BaseTest {
 	}
 
 	@Override
+	public void testDump() {
+		// TODO Auto-generated method stub
+		super.testDump();
+	}
+
+	@Override
+	public void testRestore() {
+		// TODO Auto-generated method stub
+		super.testRestore();
+	}
+
+	@Override
 	public void testIterPerPageStateless() {
 		// TODO Auto-generated method stub
 		super.testIterPerPageStateless();
@@ -1572,18 +1332,6 @@ public class GaeTest extends BaseTest {
 	public void testIterPerPageStateful2() {
 		// TODO Auto-generated method stub
 		super.testIterPerPageStateful2();
-	}
-
-	@Override
-	public void testDump() {
-		// TODO Auto-generated method stub
-		super.testDump();
-	}
-
-	@Override
-	public void testRestore() {
-		// TODO Auto-generated method stub
-		super.testRestore();
 	}
 
 	@Override
@@ -1621,67 +1369,7 @@ public class GaeTest extends BaseTest {
 		// TODO Auto-generated method stub
 		super.testBatchUpdateList();
 	}
-
-	@Override
-	public void testGetByKeyUUID() {
-		// TODO Auto-generated method stub
-		super.testGetByKeyUUID();
-	}
-
-	@Override
-	public void testGetByKeyLongAutoID() {
-		// TODO Auto-generated method stub
-		super.testGetByKeyLongAutoID();
-	}
-
-	@Override
-	public void testGetByKeyLongManualID() {
-		// TODO Auto-generated method stub
-		super.testGetByKeyLongManualID();
-	}
-
-	@Override
-	public void testGetByKeyStringID() {
-		// TODO Auto-generated method stub
-		super.testGetByKeyStringID();
-	}
-
-	@Override
-	public void testSaveLongAutoID() {
-		// TODO Auto-generated method stub
-		super.testSaveLongAutoID();
-	}
-
-	@Override
-	public void testSaveUUID() {
-		// TODO Auto-generated method stub
-		super.testSaveUUID();
-	}
-
-	@Override
-	public void testSaveLongManualID() {
-		// TODO Auto-generated method stub
-		super.testSaveLongManualID();
-	}
-
-	@Override
-	public void testSaveStringID() {
-		// TODO Auto-generated method stub
-		super.testSaveStringID();
-	}
-
-	@Override
-	public void testBatchSave() {
-		// TODO Auto-generated method stub
-		super.testBatchSave();
-	}
-
-	@Override
-	public void testBatchSaveList() {
-		// TODO Auto-generated method stub
-		super.testBatchSaveList();
-	}
-
+	
 
 	
 }
