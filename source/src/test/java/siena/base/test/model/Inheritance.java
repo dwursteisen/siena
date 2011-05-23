@@ -20,5 +20,4 @@ public class Inheritance extends SampleModel {
     public String myFieldFromInheritanceClass;
 
     private String myPrivateFieldFromInheritanceClass;
-
 }

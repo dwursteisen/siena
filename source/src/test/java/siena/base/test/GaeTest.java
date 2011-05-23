@@ -7,7 +7,10 @@ import siena.PersistenceManager;
 import siena.Query;
 import siena.SienaException;
 import siena.SienaRestrictedApiException;
-import siena.base.test.model.*;
+import siena.base.test.model.Discovery;
+import siena.base.test.model.Discovery4Join;
+import siena.base.test.model.Discovery4Search;
+import siena.base.test.model.PersonUUID;
 import siena.gae.GaePersistenceManager;
 import siena.gae.QueryOptionGaeContext;
 
@@ -71,17 +74,7 @@ public class GaeTest extends BaseTest {
 	}
 
 
-    public void testDoBeforeOnGet() {
-        Inheritance obj = new Inheritance();
-        pm.insert(obj);
 
-        assertNull(obj.onAfterField);
-
-
-        pm.get(obj);
-
-        assertNotNull(obj.onAfterField);
-    }
 	
 	public void testFilterWithOperatorINStateful() {
 		List<PersonUUID> l = getOrderedPersonUUIDs();
