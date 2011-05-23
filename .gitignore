@@ -1,3 +1,6 @@
 source/target
 source/WEB-INF
 .svn
+source/siena.iml
+source/siena.ipr
+source/siena.iws
