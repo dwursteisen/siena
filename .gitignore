@@ -1,3 +1,9 @@
 source/target
 source/WEB-INF
+source/.classpath
+source/.settings
+source/.project
 .svn
+web/.project
+web/.classpath
+web/.settings
